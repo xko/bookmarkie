@@ -820,6 +820,18 @@ function ready (window) {
 			});
 		},
 
+		createBookmark: function(parentId, url, title) {
+			chrome.bookmarks.create({parentId:parentId,url:url,title:title}, function(bookmark){
+				const idHTML = bookmark.id ? ' id="neat-tree-item-' + bookmark.id + '"': '';
+				const elParent = document.querySelector(('#neat-tree-item-' + parentId))
+				const level = parseInt(elParent.parentNode.dataset.level) + 1;
+				const paddingInlineStart = 14 * level + 8;
+				const html = '<li class="child"' + idHTML + ' role="treeitem" data-parentid="' + parentId + '">' + generateBookmarkHTML(title, url, 'style="padding-inline-start: ' + paddingInlineStart + 'px"');
+				elParent.insertAdjacentHTML('beforeend', html)
+				
+			} )
+		},
+
 		deleteBookmark: function(id){
 			var li1 = document.querySelector('#neat-tree-item-' + id);
 			var li2 = document.querySelector('#results-item-' + id);
@@ -1025,8 +1037,8 @@ function ready (window) {
 	var bookmarkContextHandler = function(e){
 		e.stopPropagation();
 		if (!currentContext) return;
+		var id = currentContext.parentNode.id.replace(/(neat\-tree|results)\-item\-/, '');
 		var el = e.target;
-		// if (el.tagName != 'COMMAND') return;
 		var url = currentContext.href;
 		switch (el.id){
 			case 'bookmark-new-tab':
@@ -1039,13 +1051,9 @@ function ready (window) {
 				actions.openBookmarkNewWindow(url, true);
 				break;
 			case 'bookmark-edit':
-				var li = currentContext.parentNode;
-				var id = li.id.replace(/(neat\-tree|results)\-item\-/, '');
 				actions.editBookmarkFolder(id);
 				break;
 			case 'bookmark-delete':
-				var li = currentContext.parentNode;
-				var id = li.id.replace(/(neat\-tree|results)\-item\-/, '');
 				actions.deleteBookmark(id);
 				break;
 		}
@@ -1092,6 +1100,10 @@ function ready (window) {
 				case 'folder-delete':
 					actions.deleteBookmarks(id, urlsLen, children.length-urlsLen);
 					break;
+				case 'folder-add-current-tab':
+					chrome.tabs.query({ active: true, currentWindow: true },  tabs => {
+						if(tabs[0]) actions.createBookmark(id,tabs[0].url,tabs[0].title)
+					});
 			}
 		});
 		clearMenu();
